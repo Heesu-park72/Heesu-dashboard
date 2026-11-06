@@ -38,9 +38,8 @@ footer{color:var(--mut);font-size:12px;margin-top:28px}@media(max-width:640px){.
 <h2>권고 조치 및 담당자 확인</h2><div class="panel"><table><thead><tr><th>ID</th><th>제품/항목</th><th>유형</th><th>불량률(근거)</th><th>주요 불량 모드</th><th>권고(규칙 기반)</th><th>담당자</th></tr></thead><tbody><tr><td>F1</td><td>NAND-B1<br><span class='mut'>Endurance(P/E Cycle)</span></td><td>추세 상승</td><td class='num'>3.00% <span class='mut'>vs 0.46%</span><br><span class='mut'>6.53배</span></td><td>Cell Wear-out · Program 시간 증가 · P/E 사이클 조기 열화</td><td>해당 제품·항목 샘플 수 2배 확대 + 신규 Lot 우선 평가</td><td><label><input type='checkbox'> 확인</label><br><label><input type='checkbox'> 추가평가 승인</label></td></tr><tr><td>F2</td><td>NAND-A2<br><span class='mut'>Retention(고온보관)</span></td><td>일시 스파이크</td><td class='num'>2.07% <span class='mut'>vs 0.42%</span><br><span class='mut'>4.95배</span></td><td>고온 Read Fail · Vth Shift · 전하 손실</td><td>해당 기간 Lot 재평가 및 보관·평가 조건 이력 확인 (현재는 정상 복귀 여부 모니터링)</td><td><label><input type='checkbox'> 확인</label><br><label><input type='checkbox'> 추가평가 승인</label></td></tr><tr><td>F3</td><td>NAND-C2<br><span class='mut'>Read Fail(Bit Error)</span></td><td>생산라인 편중<br><span class='mut'>FAB2</span></td><td class='num'>1.33% <span class='mut'>vs 0.37%</span><br><span class='mut'>3.63배</span></td><td>ECC 한계 초과 · Read Disturb · Read Retry 과다</td><td>FAB2 생산 Lot 평가 비중 확대(전수 수준) 및 FAB 간 공정 조건 비교 요청</td><td><label><input type='checkbox'> 확인</label><br><label><input type='checkbox'> 추가평가 승인</label></td></tr></tbody></table>
 <p class="note">이상 판정 기준: 추세 상승(최근 13주 vs 초기 26주, p&lt;0.001, 1.5배 이상), 생산라인 편중(최근 26주, p&lt;0.001, 1.5배 이상), 일시 스파이크(p-chart 3σ 초과 2주 연속). 통계적 이상이 원인 확정을 의미하지는 않습니다.</p></div>
 <footer>생성: analyze.py(집계·이상 탐지) → Claude(해석 문장) → build_dashboard.py(HTML)</footer></main><style>
-#cbFab{position:fixed;right:16px;bottom:16px;z-index:50;padding:11px 16px;border:0;border-radius:24px;background:var(--acc);color:#fff;font:600 14px/1 inherit;font-family:inherit;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-#cbBox{position:fixed;right:16px;bottom:16px;z-index:60;width:min(380px,calc(100vw - 24px));height:min(540px,calc(100vh - 32px));display:none;flex-direction:column;background:var(--sf);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);overflow:hidden}
-#cbBox.open{display:flex}
+#cbBox{position:fixed;right:16px;bottom:16px;z-index:60;width:min(380px,calc(100vw - 24px));height:min(540px,calc(100vh - 32px));display:flex;flex-direction:column;background:var(--sf);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.3);overflow:hidden}
+#cbBox.min{height:auto}#cbBox.min>:not(.cbHead){display:none}
 .cbHead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:700}
 .cbHead span{flex:1}.cbHead button{border:0;background:transparent;color:var(--ink2);cursor:pointer;font:inherit;font-size:12px;padding:4px 6px;border-radius:4px}.cbHead button:hover{background:var(--bg)}
 #cbSet{display:none;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg)}#cbSet.open{display:block}
@@ -58,9 +57,8 @@ footer{color:var(--mut);font-size:12px;margin-top:28px}@media(max-width:640px){.
 #cbForm button{white-space:nowrap;padding:0 14px;border:0;border-radius:6px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
 #cbForm button:disabled,#cbIn:disabled{opacity:.5;cursor:not-allowed}
 </style>
-<button id="cbFab" type="button" aria-label="대시보드 질문 챗봇 열기">대시보드 질문</button>
 <section id="cbBox" aria-label="대시보드 질문 챗봇">
-  <div class="cbHead"><span>대시보드 Q&amp;A</span><button type="button" id="cbGear">설정</button><button type="button" id="cbClose" aria-label="닫기">✕</button></div>
+  <div class="cbHead"><span>대시보드 Q&amp;A</span><button type="button" id="cbGear">설정</button><button type="button" id="cbClose" aria-label="접기/펼치기">접기</button></div>
   <form id="cbSet" autocomplete="off">
     <label>model_name<input name="model_name" required placeholder="예: gpt-4o"></label>
     <label>base_url<input name="base_url" required value="https://api.openai.com/v1"></label>
@@ -75,7 +73,7 @@ footer{color:var(--mut);font-size:12px;margin-top:28px}@media(max-width:640px){.
 <script>
 (function(){
   var $=function(i){return document.getElementById(i)};
-  var box=$('cbBox'),fab=$('cbFab'),set=$('cbSet'),msgs=$('cbMsgs'),inp=$('cbIn'),send=$('cbSend'),chips=$('cbChips');
+  var box=$('cbBox'),set=$('cbSet'),msgs=$('cbMsgs'),inp=$('cbIn'),send=$('cbSend'),chips=$('cbChips');
   var cfg={model_name:'',base_url:set.base_url.value,api_key:''},hist=[],busy=false;
   try{var s=JSON.parse(localStorage.getItem('aqlChat')||'{}');if(s.model_name){cfg.model_name=s.model_name;set.model_name.value=s.model_name}if(s.base_url){cfg.base_url=s.base_url;set.base_url.value=s.base_url}}catch(e){}
   function add(cls,t){var d=document.createElement('div');d.className='cbm '+cls;d.textContent=t;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
@@ -85,8 +83,7 @@ footer{color:var(--mut);font-size:12px;margin-top:28px}@media(max-width:640px){.
   var Q=['가장 우선순위가 높은 이상은?','NAND-C2 문제를 설명해줘','불량 모드 상위 3개는?'];
   Q.forEach(function(q){var b=document.createElement('button');b.type='button';b.textContent=q;b.onclick=function(){if(ready()&&!busy){inp.value=q;ask()}else{add('s','질문하려면 먼저 설정을 입력하세요.')}};chips.appendChild(b)});
   add('s','이 대시보드의 수치와 이상 후보에 대해 질문할 수 있습니다. 답변은 대시보드 데이터만 근거로 합니다.');
-  fab.onclick=function(){box.classList.add('open');fab.style.display='none';refresh();if(ready())inp.focus()};
-  $('cbClose').onclick=function(){box.classList.remove('open');fab.style.display=''};
+  $('cbClose').onclick=function(){var m=box.classList.toggle('min');this.textContent=m?'펼치기':'접기';if(!m){msgs.scrollTop=msgs.scrollHeight;if(ready())inp.focus()}};
   $('cbGear').onclick=function(){set.classList.toggle('open')};
   set.addEventListener('submit',function(e){e.preventDefault();
     cfg={model_name:set.model_name.value.trim(),base_url:set.base_url.value.trim(),api_key:set.api_key.value};
